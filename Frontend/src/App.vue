@@ -681,10 +681,7 @@ const filteredPets = computed(() => {
       </transition>
 
       <div class="flex items-center space-x-2">
-        <div class="bg-white/90 backdrop-blur border border-[#F3EDE2]/80 px-4 py-1.5 rounded-full shadow-md flex items-center space-x-2">
-          <span class="text-[10px] font-bold text-[#2A2A2A]/70">SERVER:</span>
-          <span class="font-semibold text-xs text-[#7F9C86]">{{ apiBaseUrl }}</span>
-        </div>
+        
 
         <button 
           @click="showTerminal = !showTerminal" 
