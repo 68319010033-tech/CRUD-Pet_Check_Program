@@ -6,7 +6,7 @@ services:
     container_name: petcheck-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: MyCoolPetPass123
+      POSTGRES_PASSWORD: Achirawit123
       POSTGRES_DB: petcheckdb
     ports:
       - "5432:5432"
@@ -31,7 +31,7 @@ services:
       - postgres-db
 
   frontend:
-    build: ./frontend
+    build: achirawit1/petcheck-frontend:latest
     container_name: petcheck-frontend
     ports:
       - "5173:80" # <-- Map your local 5173 to container's Nginx port 80
