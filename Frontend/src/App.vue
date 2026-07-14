@@ -26,8 +26,7 @@ const isLoading = ref(false);
 const formSubmitting = ref(false);
 const notification = ref(null);
 
-const apiMode = ref('mock'); // 'mock' or 'real'
-const apiBaseUrl = ref('http://localhost:3000');
+const apiBaseUrl = ref('http://localhost:5000');
 const showTerminal = ref(true);
 const apiLogs = ref([]);
 
@@ -51,50 +50,6 @@ const deleteConfirmModal = ref({
   petId: null,
   petName: ''
 });
-
-const getLocalDb = () => {
-  const stored = localStorage.getItem('cozytail_mock_db');
-  if (stored) return JSON.parse(stored);
-
-  const initial = [
-    {
-      id: 1,
-      name: 'Milo (ไมโล)',
-      type: 'dog',
-      breed: 'Golden Retriever',
-      price: 15500,
-      tags: 'ขี้เล่น, อัธยาศัยดี, เป็นมิตร',
-      image: 'https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&q=80&w=600',
-      available: true
-    },
-    {
-      id: 2,
-      name: 'Luna (ลูน่า)',
-      type: 'cat',
-      breed: 'British Shorthair',
-      price: 24000,
-      tags: 'รักสงบ, ขี้เซา, ขี้อ้อนมาก',
-      image: 'https://images.unsplash.com/photo-1533738363-b7f9aef128ce?auto=format&fit=crop&q=80&w=600',
-      available: true
-    },
-    {
-      id: 3,
-      name: 'Oliver (โอลิเวอร์)',
-      type: 'rabbit',
-      breed: 'Holland Lop',
-      price: 3500,
-      tags: 'ขี้ตกใจ, ชอบกินแครอท',
-      image: 'https://images.unsplash.com/photo-1585110396000-c9ffd4e4b308?auto=format&fit=crop&q=80&w=600',
-      available: false
-    }
-  ];
-  localStorage.setItem('cozytail_mock_db', JSON.stringify(initial));
-  return initial;
-};
-
-const saveLocalDb = (data) => {
-  localStorage.setItem('cozytail_mock_db', JSON.stringify(data));
-};
 
 const addLog = (type, method, endpoint, data = null) => {
   const now = new Date();
@@ -123,82 +78,29 @@ const showNotification = (message, type = 'success') => {
 };
 
 const request = async (method, path, body = null) => {
-  const endpoint = apiMode.value === 'real'
-    ? `${apiBaseUrl.value.replace(/\/$/, '')}${path}`
-    : `MOCK_SERVER${path}`;
+  const endpoint = `${apiBaseUrl.value.replace(/\/$/, '')}${path}`;
 
   addLog('request', method, endpoint, body);
 
-  if (apiMode.value === 'mock') {
-    await new Promise(resolve => setTimeout(resolve, 300));
-    const db = getLocalDb();
+  const options = {
+    method,
+    headers: { 'Content-Type': 'application/json' }
+  };
+  if (body) options.body = JSON.stringify(body);
 
-    if (path === '/api/pets' && method === 'GET') {
-      addLog('response', '200 OK', endpoint, db);
-      return JSON.parse(JSON.stringify(db));
+  try {
+    const res = await fetch(endpoint, options);
+    if (!res.ok) {
+      const errorText = await res.text();
+      addLog('error', `${res.status} ${res.statusText}`, endpoint, { error: errorText });
+      throw new Error(`API returned ${res.status}: ${errorText}`);
     }
-
-    if (path.startsWith('/api/pets/') && method === 'GET') {
-      const id = parseInt(path.split('/').pop());
-      const pet = db.find(p => p.id === id);
-      if (!pet) {
-        addLog('error', '404 Not Found', endpoint, { error: 'Pet not found' });
-        throw new Error('Pet not found');
-      }
-      addLog('response', '200 OK', endpoint, pet);
-      return JSON.parse(JSON.stringify(pet));
-    }
-
-    if (path === '/api/pets' && method === 'POST') {
-      const newId = db.length ? Math.max(...db.map(p => p.id)) + 1 : 1;
-      const newPet = { ...body, id: newId };
-      db.push(newPet);
-      saveLocalDb(db);
-      addLog('response', '201 Created', endpoint, newPet);
-      return newPet;
-    }
-
-    if (path.startsWith('/api/pets/') && method === 'PUT') {
-      const id = parseInt(path.split('/').pop());
-      const idx = db.findIndex(p => p.id === id);
-      if (idx === -1) {
-        addLog('error', '404 Not Found', endpoint, { error: 'Pet not found' });
-        throw new Error('Pet not found');
-      }
-      db[idx] = { ...body, id };
-      saveLocalDb(db);
-      addLog('response', '200 OK', endpoint, db[idx]);
-      return db[idx];
-    }
-
-    if (path.startsWith('/api/pets/') && method === 'DELETE') {
-      const id = parseInt(path.split('/').pop());
-      const filtered = db.filter(p => p.id !== id);
-      saveLocalDb(filtered);
-      addLog('response', '200 OK (Deleted)', endpoint, { success: true, id });
-      return { success: true };
-    }
-  } else {
-    const options = {
-      method,
-      headers: { 'Content-Type': 'application/json' }
-    };
-    if (body) options.body = JSON.stringify(body);
-
-    try {
-      const res = await fetch(endpoint, options);
-      if (!res.ok) {
-        const errorText = await res.text();
-        addLog('error', `${res.status} ${res.statusText}`, endpoint, { error: errorText });
-        throw new Error(`API returned ${res.status}: ${errorText}`);
-      }
-      const data = await res.json();
-      addLog('response', `${res.status} OK`, endpoint, data);
-      return data;
-    } catch (err) {
-      addLog('error', 'Network Connection Refused', endpoint, { message: err.message });
-      throw err;
-    }
+    const data = await res.json();
+    addLog('response', `${res.status} OK`, endpoint, data);
+    return data;
+  } catch (err) {
+    addLog('error', 'Network Connection Refused', endpoint, { message: err.message });
+    throw err;
   }
 };
 
@@ -379,8 +281,8 @@ const filteredPets = computed(() => {
 
       <div class="flex items-center space-x-3">
         <div class="hidden sm:flex items-center space-x-2 bg-[#F3EDE2]/40 px-3.5 py-1.5 rounded-full text-xs font-semibold">
-          <span class="w-2 h-2 rounded-full" :class="apiMode === 'real' ? 'bg-green-500' : 'bg-amber-500'"></span>
-          <span class="text-[#2A2A2A]/80">{{ apiMode === 'real' ? 'API Real' : 'Mock Mode' }}</span>
+          <span class="w-2 h-2 rounded-full bg-green-500"></span>
+          <span class="text-[#2A2A2A]/80">{{ apiBaseUrl }}</span>
         </div>
         <button 
           @click="openAddModal" 
@@ -505,7 +407,7 @@ const filteredPets = computed(() => {
       <!-- Pet Cards Grid -->
       <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
         <div
-          v-for="pet in filteredPets"
+          v-for="pet in pets.filter(p => selectedType === 'all' || p.type === selectedType)"
           :key="pet.id"
           class="group bg-white rounded-[2rem] border border-[#F3EDE2]/50 overflow-hidden shadow-sm hover:shadow-md transition-all duration-300 flex flex-col transform hover:-translate-y-1 relative"
         >
@@ -779,21 +681,9 @@ const filteredPets = computed(() => {
       </transition>
 
       <div class="flex items-center space-x-2">
-        <div class="bg-white/90 backdrop-blur border border-[#F3EDE2]/80 px-3 py-1.5 rounded-full shadow-md flex items-center space-x-2">
-          <span class="text-[10px] font-bold text-[#2A2A2A]/70">ENDPOINT:</span>
-          <select 
-            v-model="apiMode" 
-            class="bg-transparent font-semibold text-xs text-[#7F9C86] focus:outline-none cursor-pointer"
-          >
-            <option value="mock">จำลอง (Mock DB)</option>
-            <option value="real">เซิร์ฟเวอร์จริง (/api/*)</option>
-          </select>
-          <input 
-            v-if="apiMode === 'real'" 
-            type="text" 
-            v-model="apiBaseUrl" 
-            class="w-24 px-1.5 py-0.5 text-[10px] bg-[#F3EDE2] rounded border focus:outline-none font-mono text-[#2A2A2A]"
-          />
+        <div class="bg-white/90 backdrop-blur border border-[#F3EDE2]/80 px-4 py-1.5 rounded-full shadow-md flex items-center space-x-2">
+          <span class="text-[10px] font-bold text-[#2A2A2A]/70">SERVER:</span>
+          <span class="font-semibold text-xs text-[#7F9C86]">{{ apiBaseUrl }}</span>
         </div>
 
         <button 
