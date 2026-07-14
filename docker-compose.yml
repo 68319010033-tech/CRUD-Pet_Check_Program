@@ -6,7 +6,7 @@ services:
     container_name: petcheck-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: MyCoolPetPass123
+      POSTGRES_PASSWORD: Achirawit123
       POSTGRES_DB: petcheckdb
     ports:
       - "5432:5432"
