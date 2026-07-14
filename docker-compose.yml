@@ -6,12 +6,14 @@ services:
     container_name: petcheck-postgres
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Achirawit123
+      POSTGRES_PASSWORD: MyCoolPetPass123
       POSTGRES_DB: petcheckdb
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      # Change this line to point to the base folder
+      - postgres_data:/var/lib/postgresql 
+    restart: always
 
   backend:
     image: achirawit1/petcheck-backend:latest # <-- Pulls straight from Docker Hub!
