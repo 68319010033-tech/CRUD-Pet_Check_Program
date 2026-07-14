@@ -156,19 +156,33 @@ const savePet = async () => {
     return;
   }
 
+  const numericPrice = Number(form.value.price);
+  if (isNaN(numericPrice)) {
+    showNotification('กรุณากรอกราคาเป็นตัวเลขที่ถูกต้อง', 'error');
+    return;
+  }
+
+
   const payload = {
-    ...form.value,
-    price: Number(form.value.price),
-    image: form.value.image || fallbackImages[form.value.type] || fallbackImages.general
+    name: form.value.name.trim(),
+    type: form.value.type,
+    breed: form.value.breed.trim(),
+    price: numericPrice,
+    tags: form.value.tags ? form.value.tags.trim() : '',
+    image: form.value.image || fallbackImages[form.value.type] || fallbackImages.general,
+    available: !!form.value.available // มั่นใจว่าเป็น Boolean แน่นอน
   };
 
   formSubmitting.value = true;
   try {
     if (isEditMode.value) {
+      // สำหรับ PUT ต้องระบุ id บน URL และส่ง id ไปกับ Payload ด้วย
+      payload.id = form.value.id; 
       const updated = await request('PUT', `/api/pets/${form.value.id}`, payload);
       pets.value = pets.value.map(p => p.id === form.value.id ? updated : p);
       showNotification(`แก้ไขข้อมูล "${form.value.name}" สำเร็จแล้ว`);
     } else {
+      // สำหรับ POST ไม่ต้องส่ง id ไปให้ Backend สร้างเอง
       const created = await request('POST', '/api/pets', payload);
       pets.value.push(created);
       showNotification(`ต้อนรับสมาชิกใหม่ "${form.value.name}" สำเร็จแล้ว!`);
