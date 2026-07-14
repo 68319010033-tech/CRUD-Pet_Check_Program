@@ -1,20 +1,11 @@
-# Use a lightweight Node image
-FROM node:20-alpine
+# Use a lightweight Nginx image
+FROM nginx:alpine
 
-# Set working directory inside container
-WORKDIR /app
+# Copy your local 'dist' folder into Nginx's public folder
+COPY dist /usr/share/nginx/html
 
-# Copy package files first
-COPY package*.json ./
+# Expose port 80 (Nginx default)
+EXPOSE 80
 
-# Install dependencies
-RUN npm install
-
-# Copy the rest of your frontend code
-COPY . .
-
-# Expose Vite's default dev port
-EXPOSE 5173
-
-# Command to start Vite dev server with host flag so it's accessible outside the container
-CMD ["npm", "run", "dev", "--", "--host"]
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
