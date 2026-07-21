@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:latest
+    container_name: petcheck-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Achirawit123
+      POSTGRES_DB: petcheckdb
+    ports:
+      - "5432:5432"
+    volumes:
+      # Change this line to point to the base folder
+      - postgres_data:/var/lib/postgresql 
+    restart: always
+
+  backend:
+    image: achirawit1/petcheck-backend:latest # <-- Pulls straight from Docker Hub!
+    container_name: petcheck-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - DB_NAME=petcheckdb
+      - DB_USER=postgres
+      - DB_PASSWORD=Achirawit123
+      - DB_HOST=postgres-db
+      - DB_PORT=5432
+    depends_on:
+      - postgres-db
+
+  frontend:
+    image: achirawit1/petcheck-frontend:latest
+    container_name: petcheck-frontend
+    ports:
+      - "5173:80" # <-- Map your local 5173 to container's Nginx port 80
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:

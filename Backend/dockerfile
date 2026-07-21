@@ -1,0 +1,20 @@
+# Use a lightweight Node image
+FROM node:18-alpine
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy package files first (helps with caching build steps)
+COPY package*.json ./
+
+# Install production dependencies
+RUN npm install
+
+# Copy the rest of the backend files
+COPY . .
+
+# Expose the port your Express app runs on
+EXPOSE 5000
+
+# Command to start the server
+CMD ["npm", "run", "dev"]

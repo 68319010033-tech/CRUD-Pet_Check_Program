@@ -1,0 +1,11 @@
+# Use a lightweight Nginx image
+FROM nginx:alpine
+
+# Copy your local 'dist' folder into Nginx's public folder
+COPY dist /usr/share/nginx/html
+
+# Expose port 80 (Nginx default)
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]
