@@ -68,7 +68,7 @@ npm install
 PORT=5000
 DB_NAME=petcheckdb
 DB_USER=postgres
-DB_PASSWORD=Achirawit123
+DB_PASSWORD=Your_Password
 DB_HOST=localhost
 DB_PORT=5432
 ```
