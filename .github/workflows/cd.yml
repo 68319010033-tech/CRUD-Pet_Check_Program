@@ -5,7 +5,7 @@ on:
     workflows: ["CI - Build Docker Images"]
     types:
       - completed
-    branches: [develop]
+    branches: [develop, main]
 
 jobs:
   push:
