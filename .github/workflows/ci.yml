@@ -1,0 +1,35 @@
+name: CI - Build Docker Images
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Backend
+          file: ./Backend/dockerfile
+          push: false
+
+      - name: Build frontend assets
+        run: |
+          cd Frontend
+          npm ci
+          npm run build
+
+      - name: Build frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Frontend
+          file: ./Frontend/dockerfile
+          push: false

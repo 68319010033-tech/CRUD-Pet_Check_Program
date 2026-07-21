@@ -1,0 +1,53 @@
+name: CD - Push to Docker Hub
+
+on:
+  workflow_run:
+    workflows: ["CI - Build Docker Images"]
+    types:
+      - completed
+    branches: [develop, main]
+
+jobs:
+  push:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push backend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Backend
+          file: ./Backend/dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/petcheck-backend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/petcheck-backend:${{ github.event.workflow_run.head_sha }}
+
+      - name: Build frontend assets
+        run: |
+          cd Frontend
+          npm ci
+          npm run build
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Frontend
+          file: ./Frontend/dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/petcheck-frontend:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/petcheck-frontend:${{ github.event.workflow_run.head_sha }}
