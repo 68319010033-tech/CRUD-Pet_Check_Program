@@ -93,10 +93,9 @@ const handleSubmit = async () => {
         form.value.password,
         form.value.display_name.trim()
       );
-      verificationLink.value = data.verification_url || data.frontend_verification_url || '';
       showNotification(data.message || 'สมัครสำเร็จ กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ');
       setMode('login');
-      // keep the verification link visible after switching to login
+      // keep the verification link visible after switching to login (dev/Ethereal only)
       verificationLink.value = data.verification_url || data.frontend_verification_url || '';
       return;
     }
