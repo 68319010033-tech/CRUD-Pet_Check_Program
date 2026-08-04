@@ -8,14 +8,23 @@ const startServer = async () => {
     await sequelize.authenticate();
     console.log('PostgreSQL database connection established successfully.');
 
-    try {
-      await sequelize.sync({ alter: true });
-      console.log('Database tables synchronized.');
-    } catch (syncError) {
-      console.warn('sync({ alter: true }) failed, retrying with sync() only...');
-      console.warn(syncError.message);
+    // Prefer plain sync() — alter:true regularly breaks Postgres FKs when a
+    // leftover lowercase "users" table exists beside "Users".
+    // Opt-in with DB_SYNC_ALTER=true only when you intentionally want alter.
+    const useAlter = process.env.DB_SYNC_ALTER === 'true';
+    if (useAlter) {
+      try {
+        await sequelize.sync({ alter: true });
+        console.log('Database tables synchronized (alter).');
+      } catch (syncError) {
+        console.warn('sync({ alter: true }) failed, retrying with sync() only...');
+        console.warn(syncError.message);
+        await sequelize.sync();
+        console.log('Database tables synchronized (without alter).');
+      }
+    } else {
       await sequelize.sync();
-      console.log('Database tables synchronized (without alter).');
+      console.log('Database tables synchronized.');
     }
 
     app.listen(PORT, () => {

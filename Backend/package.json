@@ -10,7 +10,8 @@
     "test:unit": "jest --runInBand --forceExit __tests__/rbac.middleware.test.js",
     "db:migrate": "sequelize-cli db:migrate",
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
-    "seed:admin": "node scripts/seedAdmin.js"
+    "seed:admin": "node scripts/seedAdmin.js",
+    "db:fix-users-fk": "node scripts/fix-users-fk.js"
   },
   "keywords": [],
   "author": "",

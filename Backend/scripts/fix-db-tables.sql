@@ -1,7 +1,10 @@
 -- Drop empty lowercase "users" table created by mistaken tableName config.
 -- Existing app data lives in "Users" / "Profiles" / "Pets".
+-- Leaving this table around makes sequelize.sync({ alter: true }) try to add
+-- Profiles_user_id_fkey1 -> users and crash with SQLSTATE 23503.
 
 DROP TABLE IF EXISTS users CASCADE;
+ALTER TABLE "Profiles" DROP CONSTRAINT IF EXISTS "Profiles_user_id_fkey1";
 
 -- Ensure new auth columns exist on "Users" (safe if already present).
 ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
