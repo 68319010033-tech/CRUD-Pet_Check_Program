@@ -16,5 +16,5 @@ COPY . .
 # Expose the port your Express app runs on
 EXPOSE 5000
 
-# Command to start the server
-CMD ["npm", "run", "dev"]
+# Prefer production start so the container does not depend on nodemon
+CMD ["npm", "start"]

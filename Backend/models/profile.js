@@ -29,6 +29,7 @@ const Profile = sequelize.define('Profile', {
     allowNull: true,
   },
 }, {
+  tableName: 'Profiles',
   timestamps: true,
   createdAt: false,
   updatedAt: 'updated_at',
