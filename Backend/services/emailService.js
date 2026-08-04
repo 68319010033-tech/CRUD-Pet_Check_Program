@@ -70,17 +70,19 @@ const sendEmail = async ({ to, subject, html, text }) => {
 };
 
 const sendVerificationEmail = async (user, token) => {
-  const verifyUrl = `${FRONTEND_URL}/verify-email?token=${token}`;
-  const apiUrl = `${BACKEND_URL}/api/auth/verify-email`;
+  // Prefer backend GET verify so links work even if the SPA route is outdated.
+  const verifyUrl = `${BACKEND_URL}/api/auth/verify-email?token=${token}`;
+  const frontendUrl = `${FRONTEND_URL}/verify-email?token=${token}`;
 
   return sendEmail({
     to: user.email,
     subject: 'ยืนยันอีเมลบัญชี CozyTail',
-    text: `ยืนยันอีเมลของคุณด้วย token: ${token}\nหรือเปิดลิงก์: ${verifyUrl}\nAPI: POST ${apiUrl} { "token": "${token}" }`,
+    text: `ยืนยันอีเมลของคุณด้วยลิงก์: ${verifyUrl}\nหรือหน้าเว็บ: ${frontendUrl}\nToken: ${token}`,
     html: `
       <h2>ยินดีต้อนรับสู่ CozyTail</h2>
-      <p>กรุณายืนยันอีเมลของคุณโดยกดปุ่มด้านล่าง หรือส่ง token ไปที่ API</p>
+      <p>กรุณายืนยันอีเมลของคุณโดยกดปุ่มด้านล่าง</p>
       <p><a href="${verifyUrl}">ยืนยันอีเมล</a></p>
+      <p>หรือเปิดลิงก์หน้าเว็บ: <a href="${frontendUrl}">${frontendUrl}</a></p>
       <p>Token: <code>${token}</code></p>
       <p>ลิงก์นี้จะหมดอายุตามที่ระบบกำหนด</p>
     `,
@@ -109,4 +111,6 @@ module.exports = {
   sendEmail,
   sendVerificationEmail,
   sendPasswordResetEmail,
+  FRONTEND_URL,
+  BACKEND_URL,
 };

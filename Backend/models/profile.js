@@ -11,6 +11,12 @@ const Profile = sequelize.define('Profile', {
     type: DataTypes.INTEGER,
     allowNull: false,
     unique: true,
+    references: {
+      model: 'Users',
+      key: 'id',
+    },
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
   },
   display_name: {
     type: DataTypes.STRING,

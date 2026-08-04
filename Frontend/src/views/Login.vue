@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, onMounted } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import {
   login,
   register,
@@ -9,11 +9,13 @@ import {
 } from '../services/auth';
 
 const router = useRouter();
+const route = useRoute();
 
 // modes: login | register | forgot | resend
 const mode = ref('login');
 const isSubmitting = ref(false);
 const notification = ref(null);
+const verificationLink = ref('');
 
 const form = ref({
   email: '',
@@ -25,7 +27,7 @@ const showNotification = (message, type = 'success') => {
   notification.value = { message, type };
   setTimeout(() => {
     notification.value = null;
-  }, 4000);
+  }, 6000);
 };
 
 const resetForm = () => {
@@ -38,6 +40,7 @@ const resetForm = () => {
 
 const setMode = (nextMode) => {
   mode.value = nextMode;
+  verificationLink.value = '';
   resetForm();
 };
 
@@ -54,6 +57,16 @@ const subtitleMap = {
   forgot: 'ระบบจะส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณ',
   resend: 'ขอลิงก์ยืนยันอีเมลใหม่หากยังไม่ได้ยืนยัน',
 };
+
+onMounted(() => {
+  const verified = route.query.verified;
+  const message = route.query.message;
+  if (verified === '1') {
+    showNotification(String(message || 'ยืนยันอีเมลสำเร็จ กรุณาเข้าสู่ระบบ'));
+  } else if (verified === '0') {
+    showNotification(String(message || 'ยืนยันอีเมลไม่สำเร็จ'), 'error');
+  }
+});
 
 const handleSubmit = async () => {
   if (!form.value.email) {
@@ -80,8 +93,11 @@ const handleSubmit = async () => {
         form.value.password,
         form.value.display_name.trim()
       );
+      verificationLink.value = data.verification_url || data.frontend_verification_url || '';
       showNotification(data.message || 'สมัครสำเร็จ กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ');
       setMode('login');
+      // keep the verification link visible after switching to login
+      verificationLink.value = data.verification_url || data.frontend_verification_url || '';
       return;
     }
 
@@ -94,8 +110,10 @@ const handleSubmit = async () => {
 
     if (mode.value === 'resend') {
       const data = await resendVerification(form.value.email.trim());
+      verificationLink.value = data.verification_url || data.frontend_verification_url || '';
       showNotification(data.message || 'ส่งอีเมลยืนยันแล้ว (ถ้าบัญชียังไม่ยืนยัน)');
       setMode('login');
+      verificationLink.value = data.verification_url || data.frontend_verification_url || '';
       return;
     }
 
@@ -105,6 +123,11 @@ const handleSubmit = async () => {
       router.push('/');
     }, 400);
   } catch (error) {
+    if (error.code === 'EMAIL_NOT_VERIFIED') {
+      showNotification('บัญชียังไม่ได้ยืนยันอีเมล — กดยืนยันจากลิงก์ หรือส่งอีเมลยืนยันอีกครั้ง', 'error');
+      setMode('resend');
+      return;
+    }
     showNotification(error.message, 'error');
   } finally {
     isSubmitting.value = false;
@@ -183,6 +206,22 @@ const handleSubmit = async () => {
               <h2 class="text-2xl font-bold text-[#2A2A2A]">{{ titleMap[mode] }}</h2>
             </div>
             <p class="text-sm text-[#2A2A2A]/60">{{ subtitleMap[mode] }}</p>
+          </div>
+
+          <div
+            v-if="verificationLink"
+            class="mb-6 p-4 rounded-2xl bg-[#7F9C86]/10 border border-[#7F9C86]/20"
+          >
+            <p class="text-xs font-bold text-[#5E7463] mb-2 uppercase tracking-wider">ลิงก์ยืนยันอีเมล (dev)</p>
+            <a
+              :href="verificationLink"
+              target="_blank"
+              rel="noopener"
+              class="text-sm font-semibold text-[#7F9C86] underline break-all"
+            >
+              {{ verificationLink }}
+            </a>
+            <p class="text-xs text-[#2A2A2A]/50 mt-2">กดลิงก์นี้เพื่อยืนยัน แล้วค่อยเข้าสู่ระบบ</p>
           </div>
 
           <form @submit.prevent="handleSubmit" class="space-y-4">

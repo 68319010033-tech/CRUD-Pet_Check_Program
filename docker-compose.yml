@@ -42,7 +42,10 @@ services:
     restart: always
 
   frontend:
-    image: achirawit1/petcheck-frontend:latest
+    build:
+      context: ./Frontend
+      dockerfile: dockerfile
+    image: petcheck-frontend:local
     container_name: petcheck-frontend
     ports:
       - "5173:80" # <-- Map your local 5173 to container's Nginx port 80
