@@ -18,6 +18,13 @@ const authMiddleware = async (req, res, next) => {
       return res.status(401).json({ message: 'Invalid token or inactive account.' });
     }
 
+    if (user.locked_until && new Date(user.locked_until) > new Date()) {
+      return res.status(403).json({
+        message: 'Account is temporarily locked. Please try again later.',
+        locked_until: user.locked_until,
+      });
+    }
+
     req.user = user;
     next();
   } catch (error) {
@@ -25,4 +32,18 @@ const authMiddleware = async (req, res, next) => {
   }
 };
 
+const requireRole = (...roles) => (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ message: 'Access denied. Authentication required.' });
+  }
+
+  if (!roles.includes(req.user.role)) {
+    return res.status(403).json({ message: 'Forbidden. Insufficient permissions.' });
+  }
+
+  return next();
+};
+
 module.exports = authMiddleware;
+module.exports.authMiddleware = authMiddleware;
+module.exports.requireRole = requireRole;

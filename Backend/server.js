@@ -1,46 +1,29 @@
-const express = require('express');
-const cors = require('cors');
-require('dotenv').config();
+const app = require('./app');
 const sequelize = require('./config/db');
-require('./models');
-const petRoutes = require('./routes/petRoutes');
-const authRoutes = require('./routes/authRoutes');
-const profileRoutes = require('./routes/profileRoutes');
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/pets', petRoutes);
-
-app.get('/', (req, res) => {
-  res.send('Pet-Check Postgres API is running...');
-});
 
 const PORT = process.env.PORT || 5000;
 
-// Test DB connection and sync tables
 const startServer = async () => {
   try {
-    await sequelize.authenticate(); // Verify connection config
+    await sequelize.authenticate();
     console.log('PostgreSQL database connection established successfully.');
 
-    // sync() looks at your models and creates tables in the DB if they don't exist
-    await sequelize.sync({ alter: true }); 
+    // Keep sync for local/dev convenience; prefer migrations in production
+    await sequelize.sync({ alter: true });
     console.log('Database tables synchronized.');
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      console.log(`Swagger docs: http://localhost:${PORT}/api/docs`);
     });
   } catch (error) {
     console.error('Unable to connect to the database:', error);
+    process.exit(1);
   }
 };
 
-startServer();
+if (require.main === module) {
+  startServer();
+}
+
+module.exports = { app, startServer };

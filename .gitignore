@@ -1,3 +1,5 @@
 node_modules
 .env
 *.log
+Backend/uploads/avatars/*
+!Backend/uploads/avatars/.gitkeep

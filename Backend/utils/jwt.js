@@ -7,7 +7,7 @@ const refreshExpiresIn = process.env.JWT_REFRESH_EXPIRES_IN || '7d';
 
 const generateAccessToken = (user) =>
   jwt.sign(
-    { userId: user.id, email: user.email },
+    { userId: user.id, email: user.email, role: user.role },
     accessSecret,
     { expiresIn: accessExpiresIn }
   );
