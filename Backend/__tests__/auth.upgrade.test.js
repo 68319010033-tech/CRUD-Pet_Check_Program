@@ -3,6 +3,8 @@ jest.mock('../services/emailService', () => ({
   sendVerificationEmail: jest.fn().mockResolvedValue({ messageId: 'test-verify' }),
   sendPasswordResetEmail: jest.fn().mockResolvedValue({ messageId: 'test-reset' }),
   sendEmail: jest.fn().mockResolvedValue({ messageId: 'test' }),
+  FRONTEND_URL: 'http://localhost:5173',
+  BACKEND_URL: 'http://localhost:5000',
 }));
 
 const request = require('supertest');

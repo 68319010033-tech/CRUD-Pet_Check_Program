@@ -17,6 +17,8 @@ const {
   generateSecureToken,
   sendVerificationEmail,
   sendPasswordResetEmail,
+  BACKEND_URL,
+  FRONTEND_URL,
 } = require('../services/emailService');
 const { logLoginActivity } = require('../services/activityService');
 
@@ -27,6 +29,20 @@ const LOCK_DURATION_MINUTES = Number(process.env.ACCOUNT_LOCK_MINUTES || 15);
 const EMAIL_VERIFY_EXPIRES_HOURS = Number(process.env.EMAIL_VERIFY_EXPIRES_HOURS || 24);
 const PASSWORD_RESET_EXPIRES_MINUTES = Number(process.env.PASSWORD_RESET_EXPIRES_MINUTES || 30);
 const REQUIRE_EMAIL_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false';
+const IS_DEV_EMAIL = !process.env.SMTP_HOST;
+
+const buildVerificationPayload = (token) => ({
+  verification_token: token,
+  verification_url: `${BACKEND_URL}/api/auth/verify-email?token=${token}`,
+  frontend_verification_url: `${FRONTEND_URL}/verify-email?token=${token}`,
+});
+
+const applyEmailVerification = async (user) => {
+  await user.update({ is_email_verified: true });
+  await EmailVerificationToken.destroy({ where: { user_id: user.id } });
+  await user.reload();
+  return publicUser(user);
+};
 
 const issueTokens = async (user) => {
   const accessToken = generateAccessToken(user);
@@ -116,11 +132,27 @@ router.post('/register', async (req, res) => {
     });
 
     const token = await createEmailVerificationToken(user.id);
-    await sendVerificationEmail(user, token);
+
+    let emailPreviewUrl = null;
+    try {
+      const info = await sendVerificationEmail(user, token);
+      emailPreviewUrl = require('nodemailer').getTestMessageUrl(info) || null;
+      if (IS_DEV_EMAIL) {
+        console.log(`[VERIFY URL] ${buildVerificationPayload(token).verification_url}`);
+      }
+    } catch (emailError) {
+      console.warn('Failed to send verification email:', emailError.message);
+    }
 
     return res.status(201).json({
       message: 'User registered successfully. Please verify your email before logging in.',
       user: publicUser(user),
+      ...(IS_DEV_EMAIL
+        ? {
+            ...buildVerificationPayload(token),
+            email_preview_url: emailPreviewUrl,
+          }
+        : {}),
     });
   } catch (error) {
     return res.status(400).json({ message: error.message });
@@ -248,11 +280,12 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// @desc    Verify email with token
+// @desc    Verify email with token (POST body or GET query)
 // @route   POST /api/auth/verify-email
-router.post('/verify-email', async (req, res) => {
+// @route   GET  /api/auth/verify-email?token=...
+const verifyEmailHandler = async (req, res) => {
   try {
-    const { token } = req.body;
+    const token = req.body?.token || req.query?.token;
 
     if (!token) {
       return res.status(400).json({ message: 'Verification token is required.' });
@@ -261,30 +294,48 @@ router.post('/verify-email', async (req, res) => {
     const record = await EmailVerificationToken.findOne({ where: { token } });
 
     if (!record) {
+      if (req.method === 'GET') {
+        return res.redirect(`${FRONTEND_URL}/login?verified=0&message=${encodeURIComponent('Invalid verification token.')}`);
+      }
       return res.status(400).json({ message: 'Invalid verification token.' });
     }
 
     if (new Date(record.expires_at) < new Date()) {
       await record.destroy();
+      if (req.method === 'GET') {
+        return res.redirect(`${FRONTEND_URL}/login?verified=0&message=${encodeURIComponent('Verification token has expired.')}`);
+      }
       return res.status(400).json({ message: 'Verification token has expired.' });
     }
 
     const user = await User.findByPk(record.user_id);
     if (!user) {
+      if (req.method === 'GET') {
+        return res.redirect(`${FRONTEND_URL}/login?verified=0&message=${encodeURIComponent('User not found.')}`);
+      }
       return res.status(404).json({ message: 'User not found.' });
     }
 
-    await user.update({ is_email_verified: true });
-    await EmailVerificationToken.destroy({ where: { user_id: user.id } });
+    await applyEmailVerification(user);
+
+    if (req.method === 'GET') {
+      return res.redirect(`${FRONTEND_URL}/login?verified=1&message=${encodeURIComponent('Email verified successfully. You can now log in.')}`);
+    }
 
     return res.status(200).json({
       message: 'Email verified successfully. You can now log in.',
       user: publicUser(user),
     });
   } catch (error) {
+    if (req.method === 'GET') {
+      return res.redirect(`${FRONTEND_URL}/login?verified=0&message=${encodeURIComponent(error.message)}`);
+    }
     return res.status(500).json({ message: error.message });
   }
-});
+};
+
+router.post('/verify-email', verifyEmailHandler);
+router.get('/verify-email', verifyEmailHandler);
 
 // @desc    Resend email verification link
 // @route   POST /api/auth/resend-verification
@@ -306,10 +357,15 @@ router.post('/resend-verification', async (req, res) => {
     }
 
     const token = await createEmailVerificationToken(user.id);
-    await sendVerificationEmail(user, token);
+    try {
+      await sendVerificationEmail(user, token);
+    } catch (emailError) {
+      console.warn('Failed to resend verification email:', emailError.message);
+    }
 
     return res.status(200).json({
       message: 'If the account exists and is unverified, a new verification email has been sent.',
+      ...(IS_DEV_EMAIL ? buildVerificationPayload(token) : {}),
     });
   } catch (error) {
     return res.status(500).json({ message: error.message });

@@ -29,9 +29,18 @@ export const isAuthenticated = () => Boolean(getAccessToken());
 const parseErrorMessage = async (response) => {
   try {
     const data = await response.json();
-    return data.message || 'Request failed';
-  } catch {
-    return response.statusText || 'Request failed';
+    const error = new Error(data.message || 'Request failed');
+    error.code = data.code;
+    error.status = response.status;
+    error.data = data;
+    throw error;
+  } catch (error) {
+    if (error.message && error.status) {
+      throw error;
+    }
+    const fallback = new Error(response.statusText || 'Request failed');
+    fallback.status = response.status;
+    throw fallback;
   }
 };
 
@@ -43,7 +52,7 @@ const authRequest = async (path, body) => {
   });
 
   if (!response.ok) {
-    throw new Error(await parseErrorMessage(response));
+    await parseErrorMessage(response);
   }
 
   return response.json();

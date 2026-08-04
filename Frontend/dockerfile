@@ -1,6 +1,9 @@
 # Use a lightweight Nginx image
 FROM nginx:alpine
 
+# SPA fallback so Vue Router paths like /verify-email work on refresh
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
 # Copy your local 'dist' folder into Nginx's public folder
 COPY dist /usr/share/nginx/html
 
