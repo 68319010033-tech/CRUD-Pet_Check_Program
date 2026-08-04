@@ -48,7 +48,8 @@ const User = sequelize.define('User', {
     allowNull: true,
   },
 }, {
-  tableName: 'users',
+  // Keep Sequelize default table name "Users" to match existing DB data
+  tableName: 'Users',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
