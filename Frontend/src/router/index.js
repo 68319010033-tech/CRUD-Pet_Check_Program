@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { isAuthenticated } from '../services/auth';
 import Login from '../views/Login.vue';
+import VerifyEmail from '../views/VerifyEmail.vue';
+import ResetPassword from '../views/ResetPassword.vue';
 import PetDashboard from '../views/PetDashboard.vue';
 
 const router = createRouter({
@@ -10,6 +12,18 @@ const router = createRouter({
       path: '/login',
       name: 'login',
       component: Login,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/verify-email',
+      name: 'verify-email',
+      component: VerifyEmail,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/reset-password',
+      name: 'reset-password',
+      component: ResetPassword,
       meta: { guestOnly: true },
     },
     {
@@ -30,7 +44,7 @@ router.beforeEach((to) => {
     return { name: 'login' };
   }
 
-  if (to.meta.guestOnly && isAuthenticated()) {
+  if (to.meta.guestOnly && isAuthenticated() && to.name === 'login') {
     return { name: 'dashboard' };
   }
 

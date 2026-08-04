@@ -28,7 +28,27 @@ const User = sequelize.define('User', {
     type: DataTypes.BOOLEAN,
     defaultValue: true,
   },
+  role: {
+    type: DataTypes.ENUM('user', 'admin'),
+    allowNull: false,
+    defaultValue: 'user',
+  },
+  is_email_verified: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+  },
+  failed_login_attempts: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  locked_until: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
 }, {
+  tableName: 'users',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',

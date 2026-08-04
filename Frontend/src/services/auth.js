@@ -60,14 +60,21 @@ export const login = async (email, password) => {
 };
 
 export const register = async (email, password, display_name) => {
-  const data = await authRequest('/api/auth/register', { email, password, display_name });
-  setAuthSession({
-    accessToken: data.accessToken,
-    refreshToken: data.refreshToken,
-    user: data.user,
-  });
-  return data;
+  // Registration no longer returns JWT — user must verify email first.
+  return authRequest('/api/auth/register', { email, password, display_name });
 };
+
+export const verifyEmail = async (token) =>
+  authRequest('/api/auth/verify-email', { token });
+
+export const resendVerification = async (email) =>
+  authRequest('/api/auth/resend-verification', { email });
+
+export const forgotPassword = async (email) =>
+  authRequest('/api/auth/forgot-password', { email });
+
+export const resetPassword = async (token, newPassword) =>
+  authRequest('/api/auth/reset-password', { token, newPassword });
 
 export const logout = async () => {
   const accessToken = getAccessToken();

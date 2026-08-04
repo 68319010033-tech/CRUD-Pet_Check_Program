@@ -1,11 +1,17 @@
 <script setup>
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { login, register } from '../services/auth';
+import {
+  login,
+  register,
+  resendVerification,
+  forgotPassword,
+} from '../services/auth';
 
 const router = useRouter();
 
-const isRegisterMode = ref(false);
+// modes: login | register | forgot | resend
+const mode = ref('login');
 const isSubmitting = ref(false);
 const notification = ref(null);
 
@@ -19,29 +25,48 @@ const showNotification = (message, type = 'success') => {
   notification.value = { message, type };
   setTimeout(() => {
     notification.value = null;
-  }, 3500);
+  }, 4000);
 };
 
 const resetForm = () => {
   form.value = {
-    email: '',
+    email: form.value.email,
     password: '',
     display_name: '',
   };
 };
 
-const toggleMode = () => {
-  isRegisterMode.value = !isRegisterMode.value;
+const setMode = (nextMode) => {
+  mode.value = nextMode;
   resetForm();
 };
 
+const titleMap = {
+  login: 'เข้าสู่ระบบ',
+  register: 'สมัครสมาชิก',
+  forgot: 'ลืมรหัสผ่าน',
+  resend: 'ส่งอีเมลยืนยันอีกครั้ง',
+};
+
+const subtitleMap = {
+  login: 'กรอกข้อมูลบัญชีของคุณเพื่อเข้าใช้งาน',
+  register: 'สร้างบัญชีใหม่ — ต้องยืนยันอีเมลก่อนเข้าสู่ระบบ',
+  forgot: 'ระบบจะส่งลิงก์รีเซ็ตรหัสผ่านไปยังอีเมลของคุณ',
+  resend: 'ขอลิงก์ยืนยันอีเมลใหม่หากยังไม่ได้ยืนยัน',
+};
+
 const handleSubmit = async () => {
-  if (!form.value.email || !form.value.password) {
-    showNotification('กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน', 'error');
+  if (!form.value.email) {
+    showNotification('กรุณากรอกอีเมล', 'error');
     return;
   }
 
-  if (isRegisterMode.value && !form.value.display_name.trim()) {
+  if ((mode.value === 'login' || mode.value === 'register') && !form.value.password) {
+    showNotification('กรุณากรอกรหัสผ่าน', 'error');
+    return;
+  }
+
+  if (mode.value === 'register' && !form.value.display_name.trim()) {
     showNotification('กรุณากรอกชื่อที่แสดงสำหรับการสมัครสมาชิก', 'error');
     return;
   }
@@ -49,21 +74,36 @@ const handleSubmit = async () => {
   isSubmitting.value = true;
 
   try {
-    if (isRegisterMode.value) {
-      await register(
+    if (mode.value === 'register') {
+      const data = await register(
         form.value.email.trim(),
         form.value.password,
         form.value.display_name.trim()
       );
-      showNotification('สมัครสมาชิกสำเร็จ ยินดีต้อนรับสู่ CozyTail!');
-    } else {
-      await login(form.value.email.trim(), form.value.password);
-      showNotification('เข้าสู่ระบบสำเร็จ');
+      showNotification(data.message || 'สมัครสำเร็จ กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ');
+      setMode('login');
+      return;
     }
 
+    if (mode.value === 'forgot') {
+      const data = await forgotPassword(form.value.email.trim());
+      showNotification(data.message || 'หากอีเมลมีในระบบ จะได้รับลิงก์รีเซ็ตรหัสผ่าน');
+      setMode('login');
+      return;
+    }
+
+    if (mode.value === 'resend') {
+      const data = await resendVerification(form.value.email.trim());
+      showNotification(data.message || 'ส่งอีเมลยืนยันแล้ว (ถ้าบัญชียังไม่ยืนยัน)');
+      setMode('login');
+      return;
+    }
+
+    await login(form.value.email.trim(), form.value.password);
+    showNotification('เข้าสู่ระบบสำเร็จ');
     setTimeout(() => {
       router.push('/');
-    }, 500);
+    }, 400);
   } catch (error) {
     showNotification(error.message, 'error');
   } finally {
@@ -109,13 +149,13 @@ const handleSubmit = async () => {
           <div class="z-10 max-w-md">
             <span class="inline-flex items-center space-x-2 bg-white/80 backdrop-blur px-4 py-2 rounded-full text-xs font-bold text-[#7F9C86] mb-5 border border-[#F3EDE2]">
               <span>🔐</span>
-              <span>JWT Authentication</span>
+              <span>JWT + Email Verify + RBAC</span>
             </span>
             <h1 class="text-3xl md:text-4xl font-bold text-[#2A2A2A] mb-4 leading-tight">
               ยินดีต้อนรับกลับสู่ CozyTail 🌿
             </h1>
             <p class="text-[#2A2A2A]/70 text-sm leading-relaxed mb-8">
-              เข้าสู่ระบบเพื่อจัดการข้อมูลสัตว์เลี้ยงของคุณอย่างปลอดภัยด้วย JWT access token และ refresh token ตามมาตรฐานใบงาน
+              ระบบยืนยันอีเมล กู้คืนรหัสผ่าน ป้องกัน brute-force และสิทธิ์ผู้ดูแลระบบ ตามใบงานอัปเกรด Authentication
             </p>
 
             <div class="grid grid-cols-2 gap-4">
@@ -138,19 +178,15 @@ const handleSubmit = async () => {
           <div class="mb-8">
             <div class="flex items-center space-x-2 mb-3">
               <span class="w-8 h-8 rounded-full bg-[#7F9C86]/10 flex items-center justify-center text-sm">
-                {{ isRegisterMode ? '✨' : '🔑' }}
+                {{ mode === 'register' ? '✨' : mode === 'forgot' ? '📧' : '🔑' }}
               </span>
-              <h2 class="text-2xl font-bold text-[#2A2A2A]">
-                {{ isRegisterMode ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ' }}
-              </h2>
+              <h2 class="text-2xl font-bold text-[#2A2A2A]">{{ titleMap[mode] }}</h2>
             </div>
-            <p class="text-sm text-[#2A2A2A]/60">
-              {{ isRegisterMode ? 'สร้างบัญชีใหม่เพื่อเริ่มใช้งานแดชบอร์ด' : 'กรอกข้อมูลบัญชีของคุณเพื่อเข้าใช้งาน' }}
-            </p>
+            <p class="text-sm text-[#2A2A2A]/60">{{ subtitleMap[mode] }}</p>
           </div>
 
           <form @submit.prevent="handleSubmit" class="space-y-4">
-            <div v-if="isRegisterMode">
+            <div v-if="mode === 'register'">
               <label class="block text-xs font-bold text-[#2A2A2A]/70 mb-1.5 uppercase tracking-wider">ชื่อที่แสดง *</label>
               <input
                 v-model="form.display_name"
@@ -171,7 +207,7 @@ const handleSubmit = async () => {
               />
             </div>
 
-            <div>
+            <div v-if="mode === 'login' || mode === 'register'">
               <label class="block text-xs font-bold text-[#2A2A2A]/70 mb-1.5 uppercase tracking-wider">รหัสผ่าน *</label>
               <input
                 v-model="form.password"
@@ -188,17 +224,42 @@ const handleSubmit = async () => {
               class="w-full mt-2 px-4 py-3 bg-[#7F9C86] hover:bg-[#5E7463] disabled:bg-[#7F9C86]/50 text-white font-bold text-sm rounded-xl shadow-sm transition-all duration-300 flex justify-center items-center transform hover:scale-[1.01]"
             >
               <span v-if="isSubmitting" class="animate-spin mr-2">⌛</span>
-              <span>{{ isRegisterMode ? 'สมัครสมาชิก' : 'เข้าสู่ระบบ' }}</span>
+              <span>{{ titleMap[mode] }}</span>
             </button>
           </form>
 
-          <div class="mt-6 pt-6 border-t border-[#F3EDE2]/60 text-center">
+          <div class="mt-6 pt-6 border-t border-[#F3EDE2]/60 space-y-2 text-center">
             <button
+              v-if="mode === 'login'"
               type="button"
-              @click="toggleMode"
-              class="text-sm font-bold text-[#7F9C86] hover:text-[#5E7463] transition-colors"
+              @click="setMode('register')"
+              class="block w-full text-sm font-bold text-[#7F9C86] hover:text-[#5E7463] transition-colors"
             >
-              {{ isRegisterMode ? 'มีบัญชีอยู่แล้ว? เข้าสู่ระบบ' : 'ยังไม่มีบัญชี? สมัครสมาชิก' }}
+              ยังไม่มีบัญชี? สมัครสมาชิก
+            </button>
+            <button
+              v-if="mode === 'login'"
+              type="button"
+              @click="setMode('forgot')"
+              class="block w-full text-sm font-semibold text-[#2A2A2A]/60 hover:text-[#7F9C86] transition-colors"
+            >
+              ลืมรหัสผ่าน?
+            </button>
+            <button
+              v-if="mode === 'login'"
+              type="button"
+              @click="setMode('resend')"
+              class="block w-full text-sm font-semibold text-[#2A2A2A]/60 hover:text-[#7F9C86] transition-colors"
+            >
+              ส่งอีเมลยืนยันอีกครั้ง
+            </button>
+            <button
+              v-if="mode !== 'login'"
+              type="button"
+              @click="setMode('login')"
+              class="block w-full text-sm font-bold text-[#7F9C86] hover:text-[#5E7463] transition-colors"
+            >
+              กลับไปเข้าสู่ระบบ
             </button>
           </div>
         </div>
