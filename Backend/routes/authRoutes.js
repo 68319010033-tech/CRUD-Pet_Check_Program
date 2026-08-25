@@ -19,6 +19,7 @@ const {
   sendPasswordResetEmail,
   BACKEND_URL,
   FRONTEND_URL,
+  isRealSmtpConfigured,
 } = require('../services/emailService');
 const { logLoginActivity } = require('../services/activityService');
 
@@ -29,7 +30,7 @@ const LOCK_DURATION_MINUTES = Number(process.env.ACCOUNT_LOCK_MINUTES || 15);
 const EMAIL_VERIFY_EXPIRES_HOURS = Number(process.env.EMAIL_VERIFY_EXPIRES_HOURS || 24);
 const PASSWORD_RESET_EXPIRES_MINUTES = Number(process.env.PASSWORD_RESET_EXPIRES_MINUTES || 30);
 const REQUIRE_EMAIL_VERIFICATION = process.env.REQUIRE_EMAIL_VERIFICATION !== 'false';
-const IS_DEV_EMAIL = !process.env.SMTP_HOST;
+const IS_DEV_EMAIL = !isRealSmtpConfigured;
 
 const buildVerificationPayload = (token) => ({
   verification_token: token,
@@ -141,11 +142,24 @@ router.post('/register', async (req, res) => {
         console.log(`[VERIFY URL] ${buildVerificationPayload(token).verification_url}`);
       }
     } catch (emailError) {
-      console.warn('Failed to send verification email:', emailError.message);
+      console.error('Failed to send verification email:', emailError.message);
+      // Keep account so user can resend, but surface a clear error for real SMTP misconfig.
+      if (isRealSmtpConfigured) {
+        return res.status(201).json({
+          message:
+            'Account created, but verification email could not be sent. Please use "resend verification" after SMTP is fixed, or contact support.',
+          user: publicUser(user),
+          code: 'EMAIL_SEND_FAILED',
+          error: emailError.message,
+        });
+      }
+      console.warn('Dev email fallback also failed; returning verification link in response.');
     }
 
     return res.status(201).json({
-      message: 'User registered successfully. Please verify your email before logging in.',
+      message: isRealSmtpConfigured
+        ? 'User registered successfully. Please check your email inbox to verify your account before logging in.'
+        : 'User registered successfully. Please verify your email before logging in.',
       user: publicUser(user),
       ...(IS_DEV_EMAIL
         ? {

@@ -5,6 +5,7 @@ jest.mock('../services/emailService', () => ({
   sendEmail: jest.fn().mockResolvedValue({ messageId: 'test' }),
   FRONTEND_URL: 'http://localhost:5173',
   BACKEND_URL: 'http://localhost:5000',
+  isRealSmtpConfigured: false,
 }));
 
 const request = require('supertest');

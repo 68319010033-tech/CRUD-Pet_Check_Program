@@ -1,0 +1,73 @@
+# Production compose for vps01 shared server
+# Ports must be in 30100-30199 and unique (check: docker ps)
+# Container/network names use s033- prefix to avoid clashes
+
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: s033-petcheck-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Achirawit123}
+      POSTGRES_DB: ${DB_NAME:-petcheckdb}
+    volumes:
+      - s033_petcheck_pgdata:/var/lib/postgresql/data
+    networks:
+      - s033-petcheck-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-petcheckdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${DOCKERHUB_USERNAME}/petcheck-backend:latest
+    container_name: s033-petcheck-backend
+    ports:
+      - "${BACKEND_PORT:-30134}:5000"
+    environment:
+      PORT: 5000
+      DB_NAME: ${DB_NAME:-petcheckdb}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Achirawit123}
+      DB_HOST: postgres-db
+      DB_PORT: 5432
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-petcheck-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-petcheck-refresh-secret-change-me}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
+      FRONTEND_URL: ${FRONTEND_URL:-http://202.29.231.188:30133}
+      BACKEND_URL: ${BACKEND_URL:-http://202.29.231.188:30134}
+      EMAIL_FROM: ${EMAIL_FROM:-CozyTail <noreply@cozytail.local>}
+      SMTP_SERVICE: ${SMTP_SERVICE:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    networks:
+      - s033-petcheck-net
+    restart: unless-stopped
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME}/petcheck-frontend:latest
+    container_name: s033-petcheck-frontend
+    ports:
+      - "${FRONTEND_PORT:-30133}:80"
+    depends_on:
+      - backend
+    networks:
+      - s033-petcheck-net
+    restart: unless-stopped
+
+networks:
+  s033-petcheck-net:
+    name: s033-petcheck-net
+
+volumes:
+  s033_petcheck_pgdata:

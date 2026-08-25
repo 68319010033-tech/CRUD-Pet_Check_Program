@@ -37,6 +37,13 @@ services:
       - REQUIRE_EMAIL_VERIFICATION=true
       - FRONTEND_URL=http://localhost:5173
       - BACKEND_URL=http://localhost:5000
+      - EMAIL_FROM=${EMAIL_FROM:-CozyTail <noreply@cozytail.local>}
+      - SMTP_SERVICE=${SMTP_SERVICE:-}
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
     depends_on:
       - postgres-db
     restart: always
