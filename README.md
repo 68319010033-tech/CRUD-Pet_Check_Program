@@ -181,7 +181,11 @@ nano .env
 
 หลังตั้ง Secrets แล้ว merge/push เข้า `develop` — CD จะ copy `docker-compose.prod.yml` ไปที่ `DEPLOY_PATH` แล้ว `pull` + `up -d`
 
-เข้าใช้งาน: `http://YOUR_SERVER_IP` (frontend :80, API ผ่าน nginx `/api`)
+เข้าใช้งาน (พอร์ตตามใบงาน 30100–30199):
+
+- Frontend: `http://YOUR_SERVER_IP:30133`
+- Backend API (ตรง): `http://YOUR_SERVER_IP:30134`
+- หรือเรียก API ผ่าน nginx ของ frontend: `http://YOUR_SERVER_IP:30133/api/...`
 
 ## Contributors
 
