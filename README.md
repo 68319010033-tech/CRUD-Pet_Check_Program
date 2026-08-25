@@ -148,6 +148,41 @@ docker compose up --build
 - หากต้องการเปลี่ยน Endpoint สามารถแก้ไขไฟล์ใน `Frontend/src/services/auth.js`
 - ค่าตั้งต้นสำหรับ Docker Compose ถูกกำหนดไว้ในไฟล์ `docker-compose.yml`
 
+## การ Deploy ด้วย CI/CD (Docker Hub + Server)
+
+Pipeline ทำงานเมื่อ **push เข้า `develop`**:
+
+1. **CI** — build Docker image (ตรวจว่า build ผ่าน)
+2. **CD** — push image ขึ้น Docker Hub แล้ว SSH deploy บนเซิร์ฟเวอร์
+
+### GitHub Secrets ที่ต้องตั้ง
+
+| Secret | ความหมาย |
+|---|---|
+| `DOCKERHUB_USERNAME` | username Docker Hub |
+| `DOCKERHUB_TOKEN` | Access Token ของ Docker Hub |
+| `DEPLOY_HOST` | IP หรือ domain ของเซิร์ฟเวอร์ |
+| `DEPLOY_USER` | user SSH |
+| `DEPLOY_SSH_KEY` | private key (PEM) ที่เซิร์ฟเวอร์ trust |
+| `DEPLOY_PATH` | path บนเซิร์ฟเวอร์ เช่น `/opt/petcheck` |
+
+### เตรียมเซิร์ฟเวอร์ครั้งแรก
+
+```bash
+# บนเซิร์ฟเวอร์ — ติดตั้ง Docker + Docker Compose แล้ว
+sudo mkdir -p /opt/petcheck
+sudo chown $USER:$USER /opt/petcheck
+cd /opt/petcheck
+
+# สร้างไฟล์ .env จากตัวอย่างใน repo
+# (คัดลอกเนื้อหา .env.prod.example แล้วแก้ค่าจริง)
+nano .env
+```
+
+หลังตั้ง Secrets แล้ว merge/push เข้า `develop` — CD จะ copy `docker-compose.prod.yml` ไปที่ `DEPLOY_PATH` แล้ว `pull` + `up -d`
+
+เข้าใช้งาน: `http://YOUR_SERVER_IP` (frontend :80, API ผ่าน nginx `/api`)
+
 ## Contributors
 
 - CRUD Pet Check Program Team

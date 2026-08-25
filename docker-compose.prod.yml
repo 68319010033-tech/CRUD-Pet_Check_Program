@@ -1,0 +1,62 @@
+# Production compose — pull images from Docker Hub (used by CD deploy)
+# Copy to server as docker-compose.prod.yml and set .env from .env.prod.example
+
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: petcheck-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Achirawit123}
+      POSTGRES_DB: ${DB_NAME:-petcheckdb}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-petcheckdb}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    image: ${DOCKERHUB_USERNAME:-achirawit1}/petcheck-backend:latest
+    container_name: petcheck-backend
+    ports:
+      - "${BACKEND_PORT:-5000}:5000"
+    environment:
+      PORT: 5000
+      DB_NAME: ${DB_NAME:-petcheckdb}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-Achirawit123}
+      DB_HOST: postgres-db
+      DB_PORT: 5432
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-petcheck-access-secret-change-me}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-petcheck-refresh-secret-change-me}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
+      REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:5000}
+      EMAIL_FROM: ${EMAIL_FROM:-CozyTail <noreply@cozytail.local>}
+      SMTP_SERVICE: ${SMTP_SERVICE:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    restart: always
+
+  frontend:
+    image: ${DOCKERHUB_USERNAME:-achirawit1}/petcheck-frontend:latest
+    container_name: petcheck-frontend
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
