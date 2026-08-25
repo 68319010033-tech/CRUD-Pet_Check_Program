@@ -1,4 +1,9 @@
-export const API_BASE_URL = 'http://localhost:5000';
+// Local Vite: default to localhost backend.
+// Docker/production build: set VITE_API_BASE_URL="" so requests use same-origin /api (nginx proxy).
+export const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL !== undefined
+    ? import.meta.env.VITE_API_BASE_URL
+    : 'http://localhost:5000';
 
 const ACCESS_TOKEN_KEY = 'petcheck_access_token';
 const REFRESH_TOKEN_KEY = 'petcheck_refresh_token';

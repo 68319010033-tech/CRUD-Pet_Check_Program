@@ -3,6 +3,8 @@ name: CI - Build Docker Images
 on:
   push:
     branches: [develop]
+  pull_request:
+    branches: [develop]
 
 jobs:
   build:
@@ -14,22 +16,20 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build backend
+      - name: Build backend image
         uses: docker/build-push-action@v6
         with:
           context: ./Backend
           file: ./Backend/dockerfile
           push: false
+          tags: petcheck-backend:ci
 
-      - name: Build frontend assets
-        run: |
-          cd Frontend
-          npm ci
-          npm run build
-
-      - name: Build frontend
+      - name: Build frontend image
         uses: docker/build-push-action@v6
         with:
           context: ./Frontend
           file: ./Frontend/dockerfile
           push: false
+          tags: petcheck-frontend:ci
+          build-args: |
+            VITE_API_BASE_URL=

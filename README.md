@@ -148,6 +148,46 @@ docker compose up --build
 - หากต้องการเปลี่ยน Endpoint สามารถแก้ไขไฟล์ใน `Frontend/src/services/auth.js`
 - ค่าตั้งต้นสำหรับ Docker Compose ถูกกำหนดไว้ในไฟล์ `docker-compose.yml`
 
+## การ Deploy ด้วย CI/CD (Docker Hub + Server)
+
+Pipeline ทำงานเมื่อ **push เข้า `develop`**:
+
+1. **CI** — build Docker image (ตรวจว่า build ผ่าน)
+2. **CD** — push image ขึ้น Docker Hub แล้ว SSH deploy บนเซิร์ฟเวอร์
+
+### GitHub Secrets ที่ต้องตั้ง (อ้างอิง vps01 guide)
+
+| Secret | ค่าจริง / ตัวอย่าง |
+|---|---|
+| `SSH_HOST` | `202.29.231.188` |
+| `SSH_PORT` | `22210` |
+| `SSH_USER` | `vps01` |
+| `SSH_PRIVATE_KEY` | เนื้อไฟล์ private key ของตัวเอง (`~/.ssh/vps01_deploy`) |
+| `DOCKERHUB_USERNAME` | username Docker Hub ของคุณ |
+| `DOCKERHUB_TOKEN` | Access Token จาก Docker Hub |
+| `DEPLOY_PATH` | `/home/vps01/apps/s033-petcheck` |
+
+### เตรียมเซิร์ฟเวอร์ครั้งแรก (vps01)
+
+```bash
+# บนเครื่องคุณ — สร้างคีย์แล้ว copy ขึ้นเซิร์ฟเวอร์ (ทำครั้งเดียว)
+ssh-keygen -t ed25519 -f ~/.ssh/vps01_deploy -N ""
+ssh-copy-id -p 22210 -i ~/.ssh/vps01_deploy.pub vps01@202.29.231.188
+# ใส่ password ตามที่ครูแจกครั้งเดียวเท่านั้น — ห้ามใส่ password ใน GitHub Secret
+
+ssh -p 22210 -i ~/.ssh/vps01_deploy vps01@202.29.231.188
+mkdir -p ~/apps/s033-petcheck
+# สร้างไฟล์ .env ในโฟลเดอร์นั้น (คัดลอกจาก .env.prod.example)
+```
+
+หลังตั้ง Secrets แล้ว merge/push เข้า `develop` — CD จะ copy compose ไปที่ `DEPLOY_PATH` แล้ว `pull` + `up -d`
+
+เข้าใช้งาน (พอร์ตตามใบงาน 30100–30199):
+
+- Frontend: `http://202.29.231.188:30133`
+- Backend API: `http://202.29.231.188:30134`
+- หรือผ่าน nginx: `http://202.29.231.188:30133/api/...`
+
 ## Contributors
 
 - CRUD Pet Check Program Team
