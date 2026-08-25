@@ -51,10 +51,11 @@ jobs:
       - name: Copy compose files to server
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: "docker-compose.prod.yml,scripts/deploy.sh"
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "docker-compose.prod.yml,scripts/deploy.sh,.env.prod.example"
           target: ${{ secrets.DEPLOY_PATH }}
           overwrite: true
 
@@ -65,13 +66,15 @@ jobs:
           DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          host: ${{ secrets.SSH_HOST }}
+          port: ${{ secrets.SSH_PORT }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: DOCKERHUB_USERNAME,DOCKERHUB_TOKEN,DEPLOY_PATH
           script_stop: true
           script: |
             set -euo pipefail
+            mkdir -p "$DEPLOY_PATH"
             cd "$DEPLOY_PATH"
 
             if [ ! -f docker-compose.prod.yml ]; then
@@ -80,16 +83,17 @@ jobs:
             fi
 
             if [ ! -f .env ]; then
-              echo "Missing .env on server. Copy .env.prod.example to $DEPLOY_PATH/.env and fill values."
+              echo "Missing .env — create it once on the server:"
+              echo "  cp .env.prod.example .env && nano .env"
               exit 1
             fi
 
             echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-
             export DOCKERHUB_USERNAME
+
             chmod +x scripts/deploy.sh 2>/dev/null || true
-            if [ -x scripts/deploy.sh ]; then
-              COMPOSE_FILE=docker-compose.prod.yml ./scripts/deploy.sh
+            if [ -f scripts/deploy.sh ]; then
+              COMPOSE_FILE=docker-compose.prod.yml bash scripts/deploy.sh
             else
               docker compose -f docker-compose.prod.yml pull backend frontend
               docker compose -f docker-compose.prod.yml up -d --remove-orphans

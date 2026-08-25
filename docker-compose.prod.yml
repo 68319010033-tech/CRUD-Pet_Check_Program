@@ -1,17 +1,20 @@
-# Production compose — pull images from Docker Hub (used by CD deploy)
-# Copy to server as docker-compose.prod.yml and set .env from .env.prod.example
+# Production compose for vps01 shared server
+# Ports must be in 30100-30199 and unique (check: docker ps)
+# Container/network names use s033- prefix to avoid clashes
 
 services:
   postgres-db:
     image: postgres:16-alpine
-    container_name: petcheck-postgres
+    container_name: s033-petcheck-postgres
     environment:
       POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-Achirawit123}
       POSTGRES_DB: ${DB_NAME:-petcheckdb}
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: always
+      - s033_petcheck_pgdata:/var/lib/postgresql/data
+    networks:
+      - s033-petcheck-net
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-petcheckdb}"]
       interval: 5s
@@ -19,10 +22,9 @@ services:
       retries: 10
 
   backend:
-    image: ${DOCKERHUB_USERNAME:-achirawit1}/petcheck-backend:latest
-    container_name: petcheck-backend
+    image: ${DOCKERHUB_USERNAME}/petcheck-backend:latest
+    container_name: s033-petcheck-backend
     ports:
-      # Host port must be in range 30100-30199 (course server rule)
       - "${BACKEND_PORT:-30134}:5000"
     environment:
       PORT: 5000
@@ -36,8 +38,8 @@ services:
       JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN:-15m}
       JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN:-7d}
       REQUIRE_EMAIL_VERIFICATION: ${REQUIRE_EMAIL_VERIFICATION:-true}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:30133}
-      BACKEND_URL: ${BACKEND_URL:-http://localhost:30134}
+      FRONTEND_URL: ${FRONTEND_URL:-http://202.29.231.188:30133}
+      BACKEND_URL: ${BACKEND_URL:-http://202.29.231.188:30134}
       EMAIL_FROM: ${EMAIL_FROM:-CozyTail <noreply@cozytail.local>}
       SMTP_SERVICE: ${SMTP_SERVICE:-}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -48,17 +50,24 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
-    restart: always
+    networks:
+      - s033-petcheck-net
+    restart: unless-stopped
 
   frontend:
-    image: ${DOCKERHUB_USERNAME:-achirawit1}/petcheck-frontend:latest
-    container_name: petcheck-frontend
+    image: ${DOCKERHUB_USERNAME}/petcheck-frontend:latest
+    container_name: s033-petcheck-frontend
     ports:
-      # Host port must be in range 30100-30199 (course server rule)
       - "${FRONTEND_PORT:-30133}:80"
     depends_on:
       - backend
-    restart: always
+    networks:
+      - s033-petcheck-net
+    restart: unless-stopped
+
+networks:
+  s033-petcheck-net:
+    name: s033-petcheck-net
 
 volumes:
-  postgres_data:
+  s033_petcheck_pgdata:
